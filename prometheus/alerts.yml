@@ -1,0 +1,46 @@
+groups:
+  - name: host
+    rules:
+      - alert: HighCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "High CPU on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }}%)"
+
+      - alert: HighMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Memory above 90% on {{ $labels.instance }}"
+
+      - alert: DiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|9p|squashfs|nsfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|9p|squashfs|nsfs"}) * 100 > 85
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Disk {{ $labels.mountpoint }} above 85% on {{ $labels.instance }}"
+
+  - name: availability
+    rules:
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.instance }} is DOWN"
+
+      - alert: SlowResponse
+        expr: probe_duration_seconds > 2
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.instance }} responding slowly ({{ $value | printf \"%.2f\" }}s)"
+
+      - alert: ScrapeTargetDown
+        expr: up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }} / {{ $labels.instance }}"

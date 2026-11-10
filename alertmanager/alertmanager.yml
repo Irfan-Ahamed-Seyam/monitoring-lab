@@ -1,0 +1,8 @@
+route:
+  receiver: default
+  group_by: [alertname, instance]
+  group_wait: 10s
+  repeat_interval: 1h
+receivers:
+  # Lab: alerts visible in the Alertmanager UI. Add a Telegram/email receiver here later.
+  - name: default
