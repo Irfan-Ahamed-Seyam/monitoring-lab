@@ -26,6 +26,17 @@ docker compose up -d
 docker compose ps
 ```
 
+### Requirements
+Docker with Compose v2, about 2 GB free RAM. Tested on Docker Desktop with the WSL2 backend (Windows 11) and Ubuntu 24.04.
+
+### Troubleshooting
+| Symptom | Fix |
+|---|---|
+| node-exporter: `path / is mounted on / but it is not a shared mount` | Docker Desktop doesn't support `rslave`. Mount the root as `/:/host:ro` (already done here) |
+| No disk metrics; node-exporter logs `was collected before with the same name` | Duplicate Docker Desktop/WSL bind mounts. Exclude them with `--collector.filesystem.mount-points-exclude` (already done here) |
+| DiskAlmostFull fires on `/usr/lib/wsl/drivers` | That's the Windows C: drive over 9p. Excluded in the alert rules |
+| Grafana blackbox probe for itself shows DOWN right after start | Grafana is still installing plugins. It turns UP in about a minute |
+
 ## Alerts (prometheus/alerts.yml)
 - HighCPU: > 80% for 1m
 - HighMemory: > 90% for 2m
