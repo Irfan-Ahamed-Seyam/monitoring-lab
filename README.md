@@ -2,6 +2,11 @@
 
 A local NOC/SOC-style monitoring stack in Docker Compose. It watches a Linux host and HTTP endpoints, alerts on CPU, memory, disk and availability, and shows the same host in both Prometheus/Grafana and Zabbix.
 
+It's the lab companion to **[fleet-monitoring](https://github.com/Irfan-Ahamed-Seyam/fleet-monitoring)**, a production Zabbix + Grafana rollout across 6 servers. This lab covers what's unsafe to try on production: Prometheus, alert rules, and deliberately breaking things to watch alerts fire and recover.
+
+![Grafana: server and availability overview](docs/images/grafana-overview.png)
+<sub>A custom Grafana dashboard: host CPU, memory and disk gauges, firing-alert count, endpoint UP/DOWN status and 24h uptime from blackbox probes, response times, load and network.</sub>
+
 ## What's in it
 | Component | Role | URL |
 |---|---|---|
@@ -29,6 +34,12 @@ docker compose ps
 - SlowResponse: response time > 2s
 - ScrapeTargetDown: Prometheus can't reach an exporter
 
+## Screenshots
+
+| Alert rules (Prometheus) | Scrape targets: 6/6 up |
+|---|---|
+| ![Prometheus alert rules](docs/images/prometheus-alerts.png) | ![Prometheus targets](docs/images/prometheus-targets.png) |
+
 ## Incident drills
 1. **CPU spike:** `docker run --rm -it --cpus=8 alpine sh -c "apk add -q stress-ng && stress-ng --cpu 8 --timeout 180s"` → HighCPU fires in Prometheus/Alertmanager, and the Zabbix "High CPU utilization" trigger fires.
 2. **Service down:** `docker compose stop zabbix-web` → EndpointDown fires within ~1 minute; `docker compose start zabbix-web` → it resolves.
@@ -54,5 +65,7 @@ probe_duration_seconds                                                         #
 - EndpointDown went no further than pending, because the outage (~15s) was shorter than the 1-minute alert threshold. That's intended: short blips don't page anyone.
 
 **Tuning: false positive.** DiskAlmostFull fired on `/usr/lib/wsl/drivers`, which is the Windows C: drive mounted into WSL over 9p at 89%. It isn't part of the monitored Linux host, so I excluded `9p|squashfs|nsfs` filesystems from the disk rule and the dashboard.
+
+**Fix: no disk data under Docker Desktop on WSL (2026-11-12).** node-exporter rejected *all* filesystem metrics because Docker Desktop exposes duplicate internal bind mounts ("collected metric ... was collected before with the same name and label values"). I excluded those mount points and the pseudo filesystems (`tmpfs`, `9p`) in node-exporter's flags. Disk usage is reported again.
 
 **Cleanup:** I disabled the default "Zabbix server" host. It expects an agent on 127.0.0.1 inside the server container, which doesn't exist in this setup.
